@@ -50,17 +50,24 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
-import java.lang.Runtime;
 import java.net.NetworkInterface;
 import java.math.BigInteger;
 import java.util.concurrent.ExecutionException;
+import java.util.UUID;
 
 import javax.annotation.Nullable;
 
 public class RNDeviceModule extends ReactContextBaseJavaModule {
 
+  // Preferences keys to store the UUID.
+  private static final String PREFS_APP_UUID = "PREFS_APP_UUID";
+  private static final String PREFS_NAME = "com.github.rebeccahughes.react-native-device-info.PREFERENCE_FILE_KEY";
+
+  // React application context.
+
   ReactApplicationContext reactContext;
 
+  // Wifi Info.
   WifiInfo wifiInfo;
 
   DeviceType deviceType;
@@ -517,7 +524,7 @@ public class RNDeviceModule extends ReactContextBaseJavaModule {
     constants.put("deviceLocale", this.getCurrentLanguage());
     constants.put("preferredLocales", this.getPreferredLocales());
     constants.put("deviceCountry", this.getCurrentCountry());
-    constants.put("uniqueId", Settings.Secure.getString(this.reactContext.getContentResolver(), Settings.Secure.ANDROID_ID));
+    constants.put("uniqueId", getUUID().toUpperCase());
     constants.put("systemManufacturer", Build.MANUFACTURER);
     constants.put("bundleId", packageName);
     try {
@@ -566,6 +573,24 @@ public class RNDeviceModule extends ReactContextBaseJavaModule {
       constants.put("supported64BitAbis", Arrays.asList(new String[] {}));
     }
     return constants;
+  }
+
+  // Creates and returns an UUID for the installation.
+  private String getUUID() {
+    SharedPreferences preferences = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    String storedUUID = preferences.getString(PREFS_APP_UUID, null);
+
+    // If there is no stored UUID, we need to create a new one and store it. This will generate the new UUID for this installation.
+    if (TextUtils.isEmpty(storedUUID)) {
+      String newUUID = UUID.randomUUID().toString();
+
+      preferences.edit().putString(PREFS_APP_UUID, newUUID).commit();
+
+      return newUUID;
+    }
+
+    // Return the stored UUID.
+    return storedUUID;
   }
 
   @Override
