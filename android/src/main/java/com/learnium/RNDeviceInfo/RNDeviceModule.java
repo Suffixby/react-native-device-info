@@ -572,7 +572,7 @@ public class RNDeviceModule extends ReactContextBaseJavaModule {
 
   // Creates and returns an UUID for the installation.
   private String getUUID() {
-    SharedPreferences preferences = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    SharedPreferences preferences = getReactApplicationContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     String storedUUID = preferences.getString(PREFS_APP_UUID, null);
 
     // If there is no stored UUID, we need to create a new one and store it. This will generate the new UUID for this installation.
