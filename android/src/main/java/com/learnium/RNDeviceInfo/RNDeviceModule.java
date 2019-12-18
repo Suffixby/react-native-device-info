@@ -52,14 +52,10 @@ import java.nio.ByteOrder;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TimeZone;
+
 import java.net.NetworkInterface;
 import java.math.BigInteger;
-import java.util.concurrent.ExecutionException;
+import java.util.Map;
 import java.util.UUID;
 
 import javax.annotation.Nonnull;
@@ -75,22 +71,16 @@ public class RNDeviceModule extends ReactContextBaseJavaModule {
   private final DeviceIdResolver deviceIdResolver;
   private BroadcastReceiver receiver;
 
-  // Preferences keys to store the UUID.
-  private static final String PREFS_APP_UUID = "PREFS_APP_UUID";
-  private static final String PREFS_NAME = "com.github.rebeccahughes.react-native-device-info.PREFERENCE_FILE_KEY";
-
-  // React application context.
-
-  ReactApplicationContext reactContext;
-
-  // Wifi Info.
-  WifiInfo wifiInfo;
   private double mLastBatteryLevel = -1;
   private String sLastBatteryState = "";
 
   private static String BATTERY_STATE = "batteryState";
   private static String BATTERY_LEVEL= "batteryLevel";
   private static String LOW_POWER_MODE = "lowPowerMode";
+
+   // Preferences keys to store the UUID.
+  private static final String PREFS_APP_UUID = "PREFS_APP_UUID";
+  private static final String PREFS_NAME = "com.github.rebeccahughes.react-native-device-info.PREFERENCE_FILE_KEY";
 
   public RNDeviceModule(ReactApplicationContext reactContext) {
     super(reactContext);
@@ -173,7 +163,7 @@ public class RNDeviceModule extends ReactContextBaseJavaModule {
 
     final Map<String, Object> constants = new HashMap<>();
 
-    constants.put("uniqueId", getUniqueIdSync());
+    constants.put("uniqueId", getUUID().toUpperCase());
     constants.put("deviceId", Build.BOARD);
     constants.put("bundleId", getReactApplicationContext().getPackageName());
     constants.put("systemName", "Android");
@@ -576,40 +566,28 @@ public class RNDeviceModule extends ReactContextBaseJavaModule {
       // This is almost always a PermissionException. We will log it but return unknown
       System.err.println("getSerialNumber failed, it probably should not be used: " + e.getMessage());
     }
-    constants.put("serialNumber", Build.SERIAL);
-    constants.put("deviceName", deviceName);
-    constants.put("systemName", "Android");
-    constants.put("systemVersion", Build.VERSION.RELEASE);
-    constants.put("model", Build.MODEL);
-    constants.put("brand", Build.BRAND);
-    constants.put("buildId", Build.ID);
-    constants.put("deviceId", Build.BOARD);
-    constants.put("apiLevel", Build.VERSION.SDK_INT);
-    constants.put("bootloader", Build.BOOTLOADER);
-    constants.put("device", Build.DEVICE);
-    constants.put("display", Build.DISPLAY);
-    constants.put("fingerprint", Build.FINGERPRINT);
-    constants.put("hardware", Build.HARDWARE);
-    constants.put("host", Build.HOST);
-    constants.put("product", Build.PRODUCT);
-    constants.put("tags", Build.TAGS);
-    constants.put("type", Build.TYPE);
-    if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-      constants.put("baseOS", Build.VERSION.BASE_OS);
-      constants.put("previewSdkInt", Build.VERSION.PREVIEW_SDK_INT);
-      constants.put("securityPatch", Build.VERSION.SECURITY_PATCH);
-    }
-    constants.put("codename", Build.VERSION.CODENAME);
-    constants.put("incremental", Build.VERSION.INCREMENTAL);
-    constants.put("deviceLocale", this.getCurrentLanguage());
-    constants.put("preferredLocales", this.getPreferredLocales());
-    constants.put("deviceCountry", this.getCurrentCountry());
-    constants.put("uniqueId", getUUID().toUpperCase());
-    constants.put("systemManufacturer", Build.MANUFACTURER);
-    constants.put("bundleId", packageName);
 
     return "unknown";
   }
+
+  // Creates and returns an UUID for the installation.
+  private String getUUID() {
+    SharedPreferences preferences = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+    String storedUUID = preferences.getString(PREFS_APP_UUID, null);
+
+    // If there is no stored UUID, we need to create a new one and store it. This will generate the new UUID for this installation.
+    if (TextUtils.isEmpty(storedUUID)) {
+      String newUUID = UUID.randomUUID().toString();
+
+      preferences.edit().putString(PREFS_APP_UUID, newUUID).commit();
+
+      return newUUID;
+    }
+
+    // Return the stored UUID.
+    return storedUUID;
+  }
+
   @ReactMethod
   public void getSerialNumber(Promise p) { p.resolve(getSerialNumberSync()); }
 
@@ -800,32 +778,12 @@ public class RNDeviceModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void getSupportedAbis(Promise p) { p.resolve(getSupportedAbisSync()); }
 
-  // Creates and returns an UUID for the installation.
-  @ReactMethod
-  public String getUUID() {
-    SharedPreferences preferences = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-    String storedUUID = preferences.getString(PREFS_APP_UUID, null);
-
-    // If there is no stored UUID, we need to create a new one and store it. This will generate the new UUID for this installation.
-    if (TextUtils.isEmpty(storedUUID)) {
-      String newUUID = UUID.randomUUID().toString();
-
-      preferences.edit().putString(PREFS_APP_UUID, newUUID).commit();
-
-      return newUUID;
-    }
-
-    // Return the stored UUID.
-    return storedUUID;
-  }
-
   @ReactMethod(isBlockingSynchronousMethod = true)
   public WritableArray getSupported32BitAbisSync() {
     WritableArray array = new WritableNativeArray();
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
       for (String abi : Build.SUPPORTED_32_BIT_ABIS) {
         array.pushString(abi);
-
       }
     }
     return array;
